@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.ServiceName }}
+  labels:
+{{ toYaml .Values.labels | indent 4 }}
+spec:
+  volumeClaimTemplates:
+{{ toYaml .Values.volumeClaimTemplates | indent 4 }}
+  serviceName: {{ .Values.ServiceName }}
+  replicas: 3
+  selector:
+    matchLabels:
+{{ toYaml .Values.labels | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ toYaml .Values.labels | indent 8 }}
+    spec:
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+      containers:
+        - command:
+            - /bin/sh
+            - '-ec'
+            - |
+              exec /bin/consul agent \
+                -advertise="${ADVERTISE_IP}" \
+                -bind=0.0.0.0 \
+                -bootstrap-expect=3 \
+                -client=0.0.0.0 \
+                -config-dir=/consul/config \
+                -datacenter={{ .Values.datacenter }} \
+                -data-dir=/consul/data \
+                -domain=consul \
+                -ui \
+                -retry-join="{{ .Values.ServiceName }}-0.{{ .Values.ServiceName }}.${NAMESPACE}.svc.cluster.local:8301" \
+                -retry-join="{{ .Values.ServiceName }}-1.{{ .Values.ServiceName }}.${NAMESPACE}.svc.cluster.local:8301" \
+                -retry-join="{{ .Values.ServiceName }}-2.{{ .Values.ServiceName }}.${NAMESPACE}.svc.cluster.local:8301" \
+                -serf-lan-port=8301 \
+                -server \
+                -disable-host-node-id
+          env:
+            - name: ADVERTISE_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          image: 'registry.saas.crland.com.cn/tools/consul:1.9.5'
+          imagePullPolicy: IfNotPresent
+          name: consul
+          ports:
+            - name: http
+              hostPort: 8500
+              containerPort: 8500
+              protocol: TCP
+            - name: serflan-tcp
+              hostPort: 8301
+              containerPort: 8301
+              protocol: TCP
+            - name: serflan-udp
+              hostPort: 8301
+              containerPort: 8301
+              protocol: UDP
+            - name: server
+              hostPort: 8300
+              containerPort: 8300
+              protocol: TCP
+            - name: dns-tcp
+              hostPort: 8600
+              containerPort: 8600
+              protocol: TCP
+            - name: dns-udp
+              hostPort: 8600
+              containerPort: 8600
+              protocol: UDP
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - consul leave
+          readinessProbe:
+            exec:
+              command:
+                - consul
+                - members
+            failureThreshold: 2
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            successThreshold: 1
+            timeoutSeconds: 5
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+{{ toYaml .Values.volumeMounts | indent 12 }}
+            - mountPath: /consul/config
+              name: config
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: consul-server-config
+          name: config

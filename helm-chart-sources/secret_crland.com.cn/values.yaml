@@ -1,0 +1,13 @@
+name: crland.com.cn
+
+# ingress:
+#   annotations:
+#     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+#   hosts: 
+#     - host: example.crland.com.cn
+#       paths:
+#         - path: /
+#   tls:
+#   - hosts:
+#     - example.crland.com.cn
+#     secretName: crland.com.cn

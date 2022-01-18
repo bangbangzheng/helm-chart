@@ -1,0 +1,53 @@
+## consul的配置，根据项目需求自定义
+datacenter: crld-oa-uat ###根据实际情况定义
+
+ServiceName: consul-server  ###根据实际情况定义
+## 全集群访问地址：${ServiceName}.${NAMESPACE}.svc.cluster.local:
+
+
+
+
+
+labels:
+  app: consul
+  component: server
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+
+### 需要提前规划好相应的node打好标签。
+### 尽量不要和其他consul的pod部署在一个宿主机，以免冲突
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: consul ###根据实际情况定义
+              operator: In
+              values:
+                - server ###根据实际情况定义
+
+
+
+volumeMounts:
+  - mountPath: /consul/data
+    name: crld-oa-uat-consul ###根据实际情况定义
+
+volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: crld-oa-uat-consul ###根据实际情况定义
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi ###根据实际情况定义
+      volumeMode: Filesystem

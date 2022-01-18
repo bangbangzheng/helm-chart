@@ -1,0 +1,11 @@
+
+name: helloworld 
+
+labels: v1
+
+replicaCount: 1
+
+image:
+  repository: hello-world
+  pullPolicy: IfNotPresent
+  tag: latest
